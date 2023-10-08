@@ -8,8 +8,11 @@ const camera = new THREE.PerspectiveCamera(
   1000
 );
 
-const renderer = new THREE.WebGLRenderer();
+const renderer = new THREE.WebGLRenderer({
+  antialias: true
+});
 renderer.setSize(window.innerWidth, window.innerHeight);
+renderer.setPixelRatio(window.devicePixelRatio);
 document.body.appendChild(renderer.domElement);
 
 // create sphere
@@ -23,7 +26,7 @@ const material = new THREE.MeshBasicMaterial({
 const sphere = new THREE.Mesh(geometry, material);
 
 scene.add(sphere);
-camera.position.z = 50;
+camera.position.z = 10;
 
 function animate() {
   requestAnimationFrame(animate);
