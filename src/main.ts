@@ -1,3 +1,4 @@
+import "./style.scss";
 import * as THREE from "three";
 import vertexShader from "./shaders/vertex.glsl";
 import fragmentShader from "./shaders/fragment.glsl";
@@ -8,7 +9,7 @@ const canvasContainer = document.querySelector("#canvas") as HTMLCanvasElement;
 const scene = new THREE.Scene();
 const camera = new THREE.PerspectiveCamera(
   75,
-  window.innerWidth / window.innerHeight,
+  canvasContainer.offsetWidth / canvasContainer.offsetHeight,
   0.1,
   1000
 );
@@ -80,7 +81,7 @@ scene.add(stars);
 const mouse = {
   x: undefined,
   y: undefined
-}
+};
 
 function animate() {
   requestAnimationFrame(animate);
@@ -93,10 +94,8 @@ function animate() {
 
 animate();
 
-addEventListener('mousemove', (event) => {
-  mouse.x = (event.clientX / window.innerWidth) * 2
-  mouse.y = (event.clientY / window.innerHeight) * 2 + 1
+addEventListener("mousemove", event => {
+  mouse.x = (event.clientX / window.innerWidth) * 2;
+  mouse.y = (event.clientY / window.innerHeight) * 2 + 1;
   console.log(mouse.x, mouse.y);
-
-})
-
+});
