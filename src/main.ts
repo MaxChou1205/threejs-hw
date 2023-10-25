@@ -1,9 +1,15 @@
 import "./style.scss";
 import * as THREE from "three";
+import countries from "../countries.json";
 import vertexShader from "./shaders/vertex.glsl";
 import fragmentShader from "./shaders/fragment.glsl";
 import atmosphereVertex from "./shaders/atmosphereVertex.glsl";
 import atmosphereFragment from "./shaders/atmosphereFragment.glsl";
+
+type CustomMesh = THREE.Mesh & {
+  country?: string;
+  population?: number;
+};
 
 const canvasContainer = document.querySelector("#canvas") as HTMLCanvasElement;
 const popupEl = document.querySelector("#popupEl") as htmlDivElement;
@@ -27,7 +33,7 @@ const renderer = new THREE.WebGLRenderer({
 renderer.setSize(canvasContainer.offsetWidth, canvasContainer.offsetHeight);
 renderer.setPixelRatio(window.devicePixelRatio);
 
-// create sphere
+// 建立地球
 const geometry = new THREE.SphereGeometry(5, 50, 50);
 // const material = new THREE.MeshBasicMaterial({
 //   // color: 0xff0000
@@ -48,9 +54,10 @@ const material = new THREE.ShaderMaterial({
 });
 const sphere = new THREE.Mesh(geometry, material);
 
-// scene.add(sphere);
+const group = new THREE.Group();
+group.add(sphere);
 
-// create atmosphere
+// 建立大氣層
 const atmosphereGeometry = new THREE.SphereGeometry(5, 50, 50);
 const atmosphereMaterial = new THREE.ShaderMaterial({
   vertexShader: atmosphereVertex,
@@ -60,12 +67,10 @@ const atmosphereMaterial = new THREE.ShaderMaterial({
 });
 const atmosphere = new THREE.Mesh(atmosphereGeometry, atmosphereMaterial);
 atmosphere.scale.set(1.1, 1.1, 1.1);
-scene.add(atmosphere);
+group.add(atmosphere);
 
 camera.position.z = 10;
 
-const group = new THREE.Group();
-group.add(sphere);
 scene.add(group);
 
 const starGeometry = new THREE.BufferGeometry();
@@ -84,38 +89,35 @@ starGeometry.setAttribute(
 const stars = new THREE.Points(starGeometry, starMaterial);
 scene.add(stars);
 
-const mouse = {
-  x: 0,
-  y: 0
-};
+const mouse = new THREE.Vector2();
 
 function animate() {
   requestAnimationFrame(animate);
 
   // renderer.render(scene, camera);
-  group.rotation.y += 0.01;
+  group.rotation.y += 0.001;
   // group.rotation.x = mouse.y * 2;
   // group.rotation.y = mouse.x * 0.5;
-
-  // update the picking ray with the camera and pointer position
-  raycaster.setFromCamera(new THREE.Vector2(mouse.x, mouse.y), camera);
-
-  // calculate objects intersecting the picking ray
-  const intersects = raycaster.intersectObjects(
-    group.children.filter((child: THREE.Mesh) => {
-      console.log(child);
-
-      return child.geometry.type == "BoxGeometry";
-    })
-  );
-  console.log(intersects);
 
   group.children.forEach((child: THREE.Mesh) => {
     (child.material as THREE.MeshBasicMaterial).opacity = 0.5;
   });
 
+  raycaster.setFromCamera(mouse, camera);
+
+  // calculate objects intersecting the picking ray
+  const intersects = raycaster.intersectObjects(
+    group.children.filter(
+      (child: THREE.Mesh) => child.geometry.type == "BoxGeometry"
+    )
+  );
+
   for (let i = 0; i < intersects.length; i++) {
-    intersects[i].object.material.opacity = 1;
+    const point = intersects[i].object as CustomMesh;
+
+    (point.material as THREE.MeshBasicMaterial).opacity = 1;
+    populationEl.innerText = point.country || "";
+    populationValueEl.innerText = point.population?.toLocaleString() || "";
   }
 
   popupEl.style.display = intersects.length > 0 ? "block" : "none";
@@ -123,6 +125,7 @@ function animate() {
   renderer.render(scene, camera);
 }
 
+// 建立國家柱體
 function createPoint(
   latitude: number,
   longitude: number,
@@ -130,17 +133,20 @@ function createPoint(
   population: number = 0
 ) {
   // https://stackoverflow.com/questions/16266809/convert-from-latitude-longitude-to-x-y
+  const scale = population / 1_000_000_000;
+  const zScale = 0.8 * scale;
+
   const point = new THREE.Mesh(
-    new THREE.BoxGeometry(0.1, 0.1, 0.8),
+    new THREE.BoxGeometry(0.2, 0.2, Math.max(zScale, 0.4)),
     new THREE.MeshBasicMaterial({
-      color: "#3bf7ff"
-      // opacity: 0.5,
-      // transparent: true
+      color: "#3bf7ff",
+      opacity: 0.5,
+      transparent: true
     })
-  );
+  ) as CustomMesh;
 
   const lat = (latitude / 180) * Math.PI;
-  const lon = (longitude / 180) * Math.PI;
+  const lon = (-longitude / 180) * Math.PI;
   const radius = 5;
   const x = radius * Math.cos(lat) * Math.cos(lon);
   const y = radius * Math.sin(lat);
@@ -148,23 +154,30 @@ function createPoint(
 
   point.position.set(x, y, z);
   point.lookAt(new THREE.Vector3(0, 0, 0));
-  point.geometry.applyMatrix4(new THREE.Matrix4().makeTranslation(0, 0, -0.4));
+  point.geometry.applyMatrix4(
+    new THREE.Matrix4().makeTranslation(0, 0, -zScale / 2)
+  );
   group.add(point);
 
-  populationEl.innerText = country;
-  populationValueEl.innerText = population?.toString();
+  point.country = country;
+  point.population = population;
 }
 
 animate();
 
-createPoint(23.6345, 102.5528);
-// sphere.rotation.y += -Math.PI / 2;
+countries.forEach((country: any) => {
+  createPoint(
+    country.latlng[0],
+    country.latlng[1],
+    country.name.common,
+    country.population
+  );
+});
 
 addEventListener("mousemove", event => {
   mouse.x =
     ((event.clientX - window.innerWidth / 2) / (window.innerWidth / 2)) * 2 - 1;
-  mouse.y = (event.clientY / window.innerHeight) * 2 + 1;
-  // console.log(mouse.x, mouse.y);
+  mouse.y = -(event.clientY / window.innerHeight) * 2 + 1;
 
   popupEl.style.left = `${event.clientX}px`;
   popupEl.style.top = `${event.clientY}px`;
