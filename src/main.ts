@@ -34,7 +34,7 @@ renderer.setSize(canvasContainer.offsetWidth, canvasContainer.offsetHeight);
 renderer.setPixelRatio(window.devicePixelRatio);
 
 // 建立地球
-const geometry = new THREE.SphereGeometry(5, 50, 50);
+const geometry = new THREE.SphereGeometry(4, 50, 50);
 // const material = new THREE.MeshBasicMaterial({
 //   // color: 0xff0000
 //   map: new THREE.TextureLoader().load(
@@ -58,7 +58,7 @@ const group = new THREE.Group();
 group.add(sphere);
 
 // 建立大氣層
-const atmosphereGeometry = new THREE.SphereGeometry(5, 50, 50);
+const atmosphereGeometry = new THREE.SphereGeometry(4, 50, 50);
 const atmosphereMaterial = new THREE.ShaderMaterial({
   vertexShader: atmosphereVertex,
   fragmentShader: atmosphereFragment,
@@ -89,21 +89,24 @@ starGeometry.setAttribute(
 const stars = new THREE.Points(starGeometry, starMaterial);
 scene.add(stars);
 
-const mouse = new THREE.Vector2();
+const mouse = {
+  x: 0,
+  y: 0,
+  down: false,
+  xPrev: 0,
+  yPrev: 0
+};
 
 function animate() {
   requestAnimationFrame(animate);
 
-  // renderer.render(scene, camera);
   group.rotation.y += 0.001;
-  // group.rotation.x = mouse.y * 2;
-  // group.rotation.y = mouse.x * 0.5;
 
   group.children.forEach((child: THREE.Mesh) => {
     (child.material as THREE.MeshBasicMaterial).opacity = 0.5;
   });
 
-  raycaster.setFromCamera(mouse, camera);
+  raycaster.setFromCamera(new THREE.Vector2(mouse.x, mouse.y), camera);
 
   // calculate objects intersecting the picking ray
   const intersects = raycaster.intersectObjects(
@@ -134,7 +137,7 @@ function createPoint(
 ) {
   // https://stackoverflow.com/questions/16266809/convert-from-latitude-longitude-to-x-y
   const scale = population / 1_000_000_000;
-  const zScale = 0.8 * scale;
+  const zScale = 0.7 * scale;
 
   const point = new THREE.Mesh(
     new THREE.BoxGeometry(0.2, 0.2, Math.max(zScale, 0.4)),
@@ -147,7 +150,7 @@ function createPoint(
 
   const lat = (latitude / 180) * Math.PI;
   const lon = (-longitude / 180) * Math.PI;
-  const radius = 5;
+  const radius = 4;
   const x = radius * Math.cos(lat) * Math.cos(lon);
   const y = radius * Math.sin(lat);
   const z = radius * Math.cos(lat) * Math.sin(lon);
@@ -174,6 +177,12 @@ countries.forEach((country: any) => {
   );
 });
 
+canvasContainer.addEventListener("mousedown", ({ clientX, clientY }) => {
+  mouse.down = true;
+  mouse.xPrev = clientX;
+  mouse.yPrev = clientY;
+});
+
 addEventListener("mousemove", event => {
   mouse.x =
     ((event.clientX - window.innerWidth / 2) / (window.innerWidth / 2)) * 2 - 1;
@@ -181,4 +190,19 @@ addEventListener("mousemove", event => {
 
   popupEl.style.left = `${event.clientX}px`;
   popupEl.style.top = `${event.clientY}px`;
+
+  if (mouse.down) {
+    event.preventDefault();
+    const xDiff = event.clientX - mouse.xPrev;
+    const yDiff = event.clientY - mouse.yPrev;
+
+    group.rotation.y += xDiff * 0.003;
+    group.rotation.x += yDiff * 0.003;
+    mouse.xPrev = event.clientX;
+    mouse.yPrev = event.clientY;
+  }
+});
+
+addEventListener("mouseup", () => {
+  mouse.down = false;
 });
