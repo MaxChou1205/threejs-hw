@@ -34,7 +34,7 @@ renderer.setSize(canvasContainer.offsetWidth, canvasContainer.offsetHeight);
 renderer.setPixelRatio(window.devicePixelRatio);
 
 // 建立地球
-const geometry = new THREE.SphereGeometry(4, 50, 50);
+const geometry = new THREE.SphereGeometry(5, 50, 50);
 // const material = new THREE.MeshBasicMaterial({
 //   // color: 0xff0000
 //   map: new THREE.TextureLoader().load(
@@ -58,7 +58,7 @@ const group = new THREE.Group();
 group.add(sphere);
 
 // 建立大氣層
-const atmosphereGeometry = new THREE.SphereGeometry(4, 50, 50);
+const atmosphereGeometry = new THREE.SphereGeometry(5, 50, 50);
 const atmosphereMaterial = new THREE.ShaderMaterial({
   vertexShader: atmosphereVertex,
   fragmentShader: atmosphereFragment,
@@ -150,7 +150,7 @@ function createPoint(
 
   const lat = (latitude / 180) * Math.PI;
   const lon = (-longitude / 180) * Math.PI;
-  const radius = 4;
+  const radius = 5;
   const x = radius * Math.cos(lat) * Math.cos(lon);
   const y = radius * Math.sin(lat);
   const z = radius * Math.cos(lat) * Math.sin(lon);
@@ -184,9 +184,17 @@ canvasContainer.addEventListener("mousedown", ({ clientX, clientY }) => {
 });
 
 addEventListener("mousemove", event => {
-  mouse.x =
-    ((event.clientX - window.innerWidth / 2) / (window.innerWidth / 2)) * 2 - 1;
-  mouse.y = -(event.clientY / window.innerHeight) * 2 + 1;
+  if (window.innerWidth >= 1280) {
+    mouse.x =
+      ((event.clientX - window.innerWidth / 2) / (window.innerWidth / 2)) * 2 -
+      1;
+    mouse.y = -(event.clientY / window.innerHeight) * 2 + 1;
+  } else {
+    const canvasRect = canvasContainer.getBoundingClientRect();
+    const offsetY = canvasRect.top;
+    mouse.x = (event.clientX / window.innerWidth) * 2 - 1;
+    mouse.y = -((event.clientY - offsetY) / window.innerHeight) * 2 + 1;
+  }
 
   popupEl.style.left = `${event.clientX}px`;
   popupEl.style.top = `${event.clientY}px`;
@@ -205,4 +213,11 @@ addEventListener("mousemove", event => {
 
 addEventListener("mouseup", () => {
   mouse.down = false;
+});
+
+addEventListener("resize", () => {
+  camera.aspect = canvasContainer.offsetWidth / canvasContainer.offsetHeight;
+  camera.updateProjectionMatrix();
+  renderer.setSize(canvasContainer.offsetWidth, canvasContainer.offsetHeight);
+  renderer.render(scene, camera);
 });
